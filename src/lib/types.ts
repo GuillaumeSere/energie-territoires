@@ -41,6 +41,7 @@ export type Territory = {
   name: string;
   department: string;
   region: string;
+  isEstimated?: boolean;
   population: number;
   surfaceKm2: number;
   consumptionMwh: number;

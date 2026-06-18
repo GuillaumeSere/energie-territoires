@@ -1,4 +1,5 @@
 import { formatEnergy, formatPercent } from "@/lib/format";
+import { formatCommuneForChat, searchCommunes } from "@/lib/communes";
 import { territories } from "@/lib/ore";
 
 type ChatRequest = {
@@ -59,6 +60,49 @@ Territoires disponibles:
 ${territoryContext}
 `.trim();
 
+function normalize(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function findPilotTerritory(message: string) {
+  const normalized = normalize(message);
+
+  return territories.find((territory) => {
+    const searchable = normalize(
+      `${territory.name} ${territory.code} ${territory.department} ${territory.region}`,
+    );
+
+    return searchable
+      .split(" ")
+      .some((part) => part.length > 2 && normalized.includes(part)) || normalized.includes(territory.code);
+  });
+}
+
+async function findCommuneMention(message: string) {
+  if (findPilotTerritory(message)) {
+    return null;
+  }
+
+  const codeMatch = message.match(/\b\d{5}\b/);
+
+  if (codeMatch) {
+    const [commune] = await searchCommunes(codeMatch[0], 1);
+    return commune ?? null;
+  }
+
+  const normalized = message
+    .replace(/[?!.,;:()]/g, " ")
+    .split(/\s+/)
+    .filter((part) => part.length > 2)
+    .join(" ");
+  const [commune] = await searchCommunes(normalized, 1);
+
+  return commune ?? null;
+}
+
 function extractOutputText(response: OpenAIResponse) {
   if (response.output_text) {
     return response.output_text;
@@ -74,6 +118,19 @@ function extractOutputText(response: OpenAIResponse) {
 }
 
 export async function POST(request: Request) {
+  const body = (await request.json()) as ChatRequest;
+  const message = body.message?.trim();
+
+  if (!message) {
+    return Response.json({ error: "Message vide" }, { status: 400 });
+  }
+
+  const communeMention = await findCommuneMention(message);
+
+  if (communeMention) {
+    return Response.json({ reply: formatCommuneForChat(communeMention) });
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -83,13 +140,6 @@ export async function POST(request: Request) {
       },
       { status: 503 },
     );
-  }
-
-  const body = (await request.json()) as ChatRequest;
-  const message = body.message?.trim();
-
-  if (!message) {
-    return Response.json({ error: "Message vide" }, { status: 400 });
   }
 
   const recentHistory = (body.history ?? [])

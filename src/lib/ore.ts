@@ -1,4 +1,5 @@
 import type { DataCenterImpact, DpeBreakdown, EnergySector, Territory, TerritorySummary } from "./types";
+import { getCommuneByCode, makeEstimatedTerritory } from "./communes";
 
 type TerritorySeed = Omit<Territory, "history" | "sectors" | "dpe" | "dataCenterImpact"> & {
   sectorShares: Record<EnergySector, number>;
@@ -438,7 +439,15 @@ export function listTerritories(): TerritorySummary[] {
 }
 
 export async function getTerritory(code: string): Promise<Territory | null> {
-  return territories.find((territory) => territory.code === code) ?? null;
+  const territory = territories.find((item) => item.code === code);
+
+  if (territory) {
+    return territory;
+  }
+
+  const commune = await getCommuneByCode(code);
+
+  return commune ? makeEstimatedTerritory(commune) : null;
 }
 
 export function compareTerritories(codes: string[]) {

@@ -19,6 +19,8 @@ export default async function TerritoryPage({ params }: { params: Promise<{ code
     notFound();
   }
 
+  const isEstimated = territory.isEstimated;
+
   return (
     <main>
       <section className="page-hero compact-hero">
@@ -27,12 +29,15 @@ export default async function TerritoryPage({ params }: { params: Promise<{ code
             {territory.department} · {territory.region}
           </p>
           <h1>{territory.name}</h1>
+          {isEstimated ? <p className="estimated-territory-note">Donnees energie estimees depuis l&apos;annuaire national.</p> : null}
           <p>
             Fiche territoriale pour suivre les usages énergétiques, les émissions associées, les charges
             numériques et les poches d&apos;action à prioriser.
           </p>
         </div>
-        <Link href="/comparateur">Comparer ce territoire</Link>
+        <Link href={isEstimated ? "/carte" : "/comparateur"}>
+          {isEstimated ? "Retour a la carte" : "Comparer ce territoire"}
+        </Link>
       </section>
 
       <section className="kpi-grid">
@@ -130,6 +135,11 @@ export default async function TerritoryPage({ params }: { params: Promise<{ code
           Code INSEE: {territory.code}
         </p>
       </section>
+      {isEstimated ? (
+        <section className="source-note">
+          <p>Donnees energie estimees pour demonstration, a remplacer par les sources publiques/API ou donnees operateurs.</p>
+        </section>
+      ) : null}
     </main>
   );
 }
